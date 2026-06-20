@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic Archer | Operations Dashboard</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css?v=20260422-1">
+</head>
+<body class="dark-theme">
+    <div id="app">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-satellite-dish"></i></div>
+                <div class="logo-text">EPIC<span>ARCHER</span></div>
+            </div>
+            <nav>
+                <button class="nav-item" data-view="dashboard">
+                    <i class="fas fa-satellite"></i> Operations
+                </button>
+                <button class="nav-item" data-view="trends">
+                    <i class="fas fa-chart-line"></i> Tactical Trends
+                </button>
+                <button class="nav-item" data-view="settings">
+                    <i class="fas fa-link"></i> Copernicus Link
+                </button>
+                <button class="nav-item" data-view="logs">
+                    <i class="fas fa-book"></i> Logs
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="pulse"></span>
+                    <span>System Online</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <h1 id="view-title">Operations</h1>
+                    <p id="view-subtitle" class="text-muted">Operational monitoring and site analysis</p>
+                </div>
+                <div class="header-right">
+                    <div id="gti-display" class="threat-index">
+                        <span class="label">System Status</span>
+                        <span class="value">Active</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- View Sections -->
+            <section id="dashboard-view" class="view">
+                <div class="map-viewport">
+                    <div id="main-map"></div>
+                    
+                    <!-- Tactical HUD Overlays -->
+                    <div class="hud-overlay-top">
+                        <div class="search-box glass-panel">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="map-search-input" placeholder="Search for a location...">
+                            <button id="execute-search" class="btn btn-search">Search</button>
+                            <div id="search-results-dropdown" class="search-dropdown hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="hud-overlay-left">
+                        <div class="card glass-panel missions-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-crosshairs text-primary"></i> Parameters</h3>
+                            </div>
+                            <div class="mission-presets">
+                                <div class="control-group mb-2">
+                                    <label class="hud-label">Detection Types</label>
+                                    <div class="detector-grid">
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="truck" checked>
+                                            <span>Vehicles</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="ship_wave">
+                                            <span>Ships</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="aircraft">
+                                            <span>Aircraft</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="train">
+                                            <span>Trains</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="night_lights">
+                                            <span>Night Lights</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="sar_vessel">
+                                            <span>SAR Vessels</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="parking">
+                                            <span>Parking</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="construction">
+                                            <span>Construction</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" class="detector-checkbox" value="opium_poppy">
+                                            <span>Opium Poppy</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="control-group mb-2">
+                                    <label class="hud-label">Time Range</label>
+                                    <select id="mission-months" class="hud-select">
+                                        <option value="1">1 Month</option>
+                                        <option value="3">3 Months</option>
+                                        <option value="4" selected>4 Months (Default)</option>
+                                        <option value="6">6 Months</option>
+                                        <option value="12">1 Year</option>
+                                        <option value="24">2 Years</option>
+                                        <option value="36">3 Years</option>
+                                        <option value="48">4 Years</option>
+                                    </select>
+                                </div>
+                                <div class="control-group mb-2">
+                                    <label class="hud-label">Frame Count</label>
+                                    <select id="mission-frames" class="hud-select">
+                                        <option value="5">Fast Scan</option>
+                                        <option value="10" selected>Balanced</option>
+                                        <option value="25">Deep Scan</option>
+                                        <option value="50">Strategic Audit</option>
+                                        <option value="1000">MAX Density</option>
+                                    </select>
+                                </div>
+                                <div class="hud-buttons">
+                                    <button id="draw-aoi" class="btn btn-hud-primary">
+                                        <i class="fas fa-vector-square"></i> Draw Area
+                                    </button>
+                                    <button id="toggle-satellite" class="btn btn-hud-secondary">
+                                        <i class="fas fa-layer-group"></i> Map Style
+                                    </button>
+                                </div>
+                                <div class="realtime-panel">
+                                    <label class="hud-label">Realtime Transponders</label>
+                                    <div class="realtime-toggle-row">
+                                        <label class="detector-option">
+                                            <input type="checkbox" id="toggle-live-aircraft">
+                                            <span>Live Aircraft</span>
+                                        </label>
+                                        <label class="detector-option">
+                                            <input type="checkbox" id="toggle-live-ships">
+                                            <span>Live Ships</span>
+                                        </label>
+                                    </div>
+                                    <button id="refresh-realtime" class="btn btn-hud-secondary">
+                                        <i class="fas fa-location-crosshairs"></i> Refresh Realtime
+                                    </button>
+                                    <div id="realtime-status" class="realtime-status">Use the current map view.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hud-overlay-right">
+                        <div class="card glass-panel feed-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-bell text-alert"></i> Activity Feed</h3>
+                                <button id="refresh-feed" class="btn-icon"><i class="fas fa-sync"></i></button>
+                            </div>
+                            <div id="alert-feed-compact" class="feed-container scrollable">
+                                <div class="loading-state">Loading updates...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New Tactical Intel Drawer -->
+                    <div id="intel-drawer" class="hud-overlay-right hidden">
+                        <div class="card glass-panel intel-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-microscope text-accent"></i> Detection Details</h3>
+                                <button id="close-intel" class="btn-icon"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div id="intel-content" class="intel-body scrollable">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="trends-view" class="view hidden">
+                <div class="strategic-dashboard">
+                    <div class="analytics-top-bar glass-panel">
+                        <div class="selector-group">
+                            <label class="hud-label">Mission Comparison</label>
+                            <div id="mission-comparison-selector" class="mission-checklist-hud">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="date-filter-group">
+                            <div class="input-block">
+                                <label class="hud-label">Start Date</label>
+                                <input type="date" id="trend-from" class="hud-input">
+                            </div>
+                            <div class="input-block">
+                                <label class="hud-label">End Date</label>
+                                <input type="date" id="trend-to" class="hud-input">
+                            </div>
+                            <button id="refresh-trends" class="btn btn-hud-primary">Refresh</button>
+                        </div>
+                    </div>
+                    
+                    <div class="strategic-grid">
+                        <div class="card glass-panel chart-card full-span">
+                            <div class="card-header">
+                                <h3><i class="fas fa-chart-area text-accent"></i> Detection Trends</h3>
+                            </div>
+                            <div class="chart-viewport">
+                                <canvas id="trend-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="stat-row">
+                            <div class="card glass-panel mini-stat">
+                                <span class="stat-label">Total Volume</span>
+                                <span id="stat-total" class="stat-value">0</span>
+                                <span class="stat-unit">S2 Detections</span>
+                            </div>
+                            <div class="card glass-panel mini-stat accent-blue">
+                                <span class="stat-label">Active Profiles</span>
+                                <span id="stat-avg" class="stat-value">0</span>
+                                <span class="stat-unit">Correlated</span>
+                            </div>
+                            <div class="card glass-panel mini-stat">
+                                <span class="stat-label">Operational Coverage</span>
+                                <span id="stat-peak" class="stat-value">--</span>
+                                <span class="stat-unit">Territory</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detailed Site View (Modal/Overlay) -->
+            <div id="site-overlay" class="overlay hidden">
+                <div class="overlay-content">
+                    <button class="close-overlay"><i class="fas fa-times"></i></button>
+                    <div id="site-detail-container"></div>
+                </div>
+            </div>
+
+            <!-- Progress HUD (Mission Intelligence Progress) -->
+            <div id="progress-hud" class="overlay hidden">
+                <div class="hud-center-content">
+                    <div class="hud-header">
+                        <i class="fas fa-satellite-dish"></i>
+                        <span>ANALYSIS IN PROGRESS</span>
+                    </div>
+                    <div class="hud-main">
+                        <div class="progress-bar-container">
+                            <div id="hud-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <span id="hud-step-text">Starting analysis...</span>
+                            <span id="hud-percent-text">0%</span>
+                        </div>
+                        <div id="hud-log" class="hud-log-console">
+                            <!-- Streamed logs appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Settings View (Copernicus Link) -->
+            <section id="settings-view" class="view hidden">
+                <div class="command-portal-container">
+                    <div class="command-portal">
+                        <div class="portal-header">
+                            <i class="fas fa-satellite-dish portal-icon"></i>
+                            <h2>Copernicus Connection</h2>
+                            <p>Manage the credentials used for analysis services.</p>
+                        </div>
+
+                        <div class="portal-body">
+                            <div class="auth-box">
+                                <div class="input-group-cyber mb-4">
+                                    <label>Copernicus Client ID</label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-user-shield"></i>
+                                        <input type="password" id="copernicus-id" placeholder="00000000-0000-0000-0000-000000000000">
+                                    </div>
+                                </div>
+
+                                <div class="input-group-cyber mb-4">
+                                    <label>Copernicus Client Secret</label>
+                                    <div class="input-wrapper">
+                                        <i class="fas fa-key"></i>
+                                        <input type="password" id="copernicus-secret" placeholder="----------------------------">
+                                    </div>
+                                </div>
+
+                                <button id="save-auth" class="btn-orbital-connect">
+                                    <span class="btn-text">Connect</span>
+                                    <div class="orbital-ring"></div>
+                                </button>
+
+                                <div id="auth-status" class="portal-status-msg mt-3"></div>
+                            </div>
+                            
+                            <div class="setup-hint mt-4">
+                                <p>Need credentials?
+                                   <a href="https://shapps.dataspace.copernicus.eu/dashboard/#/" target="_blank" class="hint-link">
+                                       Visit Copernicus Dashboard <i class="fas fa-external-link-alt"></i>
+                                   </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dark Ships Logs View -->
+            <section id="logs-view" class="view hidden">
+                <div class="logs-container">
+                    <div class="logs-header glass-panel">
+                        <h2><i class="fas fa-ship"></i> Dark Ships Event Log</h2>
+                        <p>Track ships that go offline (stop transmitting AIS) within 200 nautical miles</p>
+                        <div class="logs-controls">
+                            <button id="refresh-logs" class="btn btn-primary">
+                                <i class="fas fa-sync"></i> Refresh Logs
+                            </button>
+                            <button id="view-status" class="btn btn-secondary">
+                                <i class="fas fa-info-circle"></i> Tracking Status
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="logs-content">
+                        <!-- Dark Ships Summary -->
+                        <div class="logs-summary glass-panel">
+                            <div class="summary-card">
+                                <div class="summary-label">Currently Dark Ships</div>
+                                <div class="summary-value" id="dark-ships-count">0</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">Recent Events (72h)</div>
+                                <div class="summary-value" id="recent-events-count">0</div>
+                            </div>
+                            <div class="summary-card">
+                                <div class="summary-label">Monitoring Radius</div>
+                                <div class="summary-value">200 <span class="unit">NM</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Currently Dark Ships Table -->
+                        <div class="logs-section glass-panel">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Currently Dark Ships</h3>
+                            <div id="dark-ships-table" class="logs-table-container">
+                                <table class="logs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ship Name</th>
+                                            <th>MMSI</th>
+                                            <th>Distance (NM)</th>
+                                            <th>Dark Since</th>
+                                            <th>Duration</th>
+                                            <th>Last Position</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dark-ships-list">
+                                        <tr><td colspan="6" class="text-center">No dark ships currently</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Recent Events Log -->
+                        <div class="logs-section glass-panel">
+                            <h3><i class="fas fa-clock"></i> Recent Events (Last 72 Hours)</h3>
+                            <div id="events-log" class="logs-feed scrollable">
+                                <div class="empty-state">Loading events...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tracking Status Modal -->
+                    <div id="tracking-status-modal" class="modal hidden">
+                        <div class="modal-content glass-panel">
+                            <button class="modal-close"><i class="fas fa-times"></i></button>
+                            <h2><i class="fas fa-info-circle"></i> Dark Ships Tracking Status</h2>
+                            <div id="status-content" class="status-grid">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="app.js?v=20260422-1"></script>
+</body>
+</html>

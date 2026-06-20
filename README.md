@@ -113,6 +113,20 @@ EPIC_ARCHER_DATA_DIR=./epic_archer_data
 RF_MODEL_PATH=./rf_model.pickle
 ```
 
+### Alternative: Using the Template
+
+Alternatively, copy the included `.env.example` template:
+
+```bash
+# Copy the template
+cp .env.example .env
+
+# Edit .env and fill in your credentials
+# Your .env stays local (protected by .gitignore)
+```
+
+The `.env.example` file is checked into git and shows all required configuration options. This approach is convenient for new users.
+
 ---
 
 ## Step 3: Choose Your Deployment Method
