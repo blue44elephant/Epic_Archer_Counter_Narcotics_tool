@@ -16,6 +16,8 @@ A multi-sensor tactical intelligence platform for real-time monitoring of mariti
 
 🎯**Boonidhi API Support** — API plugin option for ISRO's Boonidhi applications
 
+🎯**API Integration with other OSINT tools** — Self-explanatory.
+
 🎯**Integration for open/compromised cameras** — IP Cameras that are left exposed to the internet are made visible on a map allowing for monitoring areas of interest. Users can also add their own cameras, or any cameras they have access to.
 
 🎯**ALPR Integration** — Integrates ALPR, including API support from platerecognizer.com or in the form of local models.
@@ -28,9 +30,11 @@ A multi-sensor tactical intelligence platform for real-time monitoring of mariti
 
 🎯**Epic Archer Workspace** — Workspace to allow users to take notes, write reports, and share their dashboards and allow collaboration and information sharing across users with tier-based permissions to prevent unauthorised access. 
 
-🎯**API Integration with other OSINT tools** — Self-explanatory.
-
-🎯**Data Lake and Data Reservoir feature** — All data is captured, sorted, processed, and deleted within 12 hours. Data can be fully searched before deletion. Any data of interest flagged by user-entered parameters is stored for 3 days in a data lake which can be shifted to a permanent data reservoir if needed.
+🎯**Data Lifecycle Management** — Epic Archer will use a multi-tiered data retention pipeline designed for privacy-first intelligence processing. This will include 4 main layers:
+1) Raw ingestion layer: Incoming data pulled regardless of source is temporarily buffered for sorting, processing, and analysis. Deleted after 12 hours.
+2) Data filtering layer: Data is evaluated against user-defined parameters (pre-set and runtime filters) to determine relevance.
+3) Data Lake: Data flagged as matching the user-defined parameters is flagged stored for short-term analytical review and validation. Deleted after 3 days.
+4) Data Reservoir: Explicitly user-promoted data is allowed to flow into a permanent database and is retained for long-term storage, reporting, and historical analysis.
 
 
 ---
