@@ -12,13 +12,26 @@ A multi-sensor tactical intelligence platform for real-time monitoring of mariti
 ✅ **Docker Ready** — Containerized for instant deployment  
 
 ## Upcoming Features (2026-2028)
+🎯**Airplane Tracking** — Live airplance tracking feature coming soon using API from multiple wesbite options including ADS-B Exchange, Flightradar24, and FlightAware.
+
 🎯**Boonidhi API Support** — API plugin option for ISRO's Boonidhi applications
 
 🎯**Integration for open/compromised cameras** — IP Cameras that are left exposed to the internet are made visible on a map allowing for monitoring areas of interest. Users can also add their own cameras, or any cameras they have access to.
 
-🎯**ALPR Integration** — Integrates ALPR, including API support from platerecognizer.com or in the form of local models
+🎯**ALPR Integration** — Integrates ALPR, including API support from platerecognizer.com or in the form of local models.
 
 🎯**Narcotics/Weapons Smuggling Route Prediction** — Predict most likely route to be used between two cities based on user-entered parameters such as road conditions, police/security presence, corruption, etc. based on priorities such as stealth and speed. 
+
+🎯**Covert Airstrip Detection** — Alerts the user when planes repeatedly land in places without any known airstrip. If the alert is false, users can rectify by marking the GPS coordinates of the point (with a buffer of 1km radius) which will add the point to list of places with known airstrips/airports.
+
+🎯**Account Creation** — Account creation to allow collaboration and file sharing across users. Also allow users to setup their own databases and workspaces for license plate recognition, facial recognition, and other applications
+
+🎯**Epic Archer Workspace** — Workspace to allow users to take notes, write reports, and share their dashboards and allow collaboration and information sharing across users with tier-based permissions to prevent unauthorised access. 
+
+🎯**API Integration with other OSINT tools** — Self-explanatory.
+
+🎯**Data Lake and Data Reservoir feature** — All data is captured, sorted, processed, and deleted within 12 hours. Data can be fully searched before deletion. Any data of interest flagged by user-entered parameters is stored for 3 days in a data lake which can be shifted to a permanent data reservoir if needed.
+
 
 ---
 
