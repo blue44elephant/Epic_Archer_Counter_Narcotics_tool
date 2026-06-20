@@ -11,6 +11,12 @@ A multi-sensor tactical intelligence platform for real-time monitoring of mariti
 ✅ **Web Dashboard** — Interactive map with tactical analysis tools  
 ✅ **Docker Ready** — Containerized for instant deployment  
 
+## Upcoming Features (2026-2028)
+🎯**Boonidhi API Support** — API plugin option for ISRO's Boonidhi applications
+🎯**Integration for open/compromised cameras** — IP Cameras that are left exposed to the internet are made visible on a map allowing for monitoring areas of interest. Users can also add their own cameras, or any cameras they have access to.
+🎯**ALPR Integration** — Integrates ALPR, including API support from platerecognizer.com or in the form of local models
+🎯**Narcotics/Weapons Smuggling Route Prediction** — Predict most likely route to be used between two cities based on user-entered parameters such as road conditions, police/security presence, corruption, etc. based on priorities such as stealth and speed. 
+
 ---
 
 ## Documentation Index
