@@ -174,6 +174,16 @@
                                     </button>
                                     <div id="realtime-status" class="realtime-status">Use the current map view.</div>
                                 </div>
+                                <div class="realtime-panel">
+                                    <label class="hud-label">CCTV Surveillance</label>
+                                    <div class="realtime-toggle-row">
+                                        <label class="detector-option">
+                                            <input type="checkbox" id="toggle-cctv-cameras">
+                                            <span>CCTV Cameras</span>
+                                        </label>
+                                    </div>
+                                    <div id="cctv-status" class="realtime-status">Surveillance cameras disabled.</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -406,6 +416,48 @@
                             <h2><i class="fas fa-info-circle"></i> Dark Ships Tracking Status</h2>
                             <div id="status-content" class="status-grid">
                                 <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CCTV Camera Viewer Modal (NEW) -->
+                    <div id="cctv-viewer-modal" class="cctv-viewer-modal hidden">
+                        <div class="cctv-viewer-container glass-panel">
+                            <div class="cctv-viewer-header">
+                                <div class="cctv-viewer-title">
+                                    <span id="cctv-camera-id">CAM-0000-0000</span>
+                                    <span id="cctv-camera-coords">0.0000, 0.0000</span>
+                                </div>
+                                <div class="cctv-viewer-time">
+                                    <span>UTC <span id="cctv-utc-time">--:--:--Z</span></span>
+                                    <span id="cctv-security-badge" class="security-badge">SECURE</span>
+                                </div>
+                            </div>
+                            <div class="cctv-viewer-content">
+                                <div class="cctv-stream-info">
+                                    <div class="cctv-camera-icon">
+                                        <i class="fas fa-camera"></i>
+                                    </div>
+                                    <div class="cctv-info-text">
+                                        <h3 id="cctv-camera-name">Unknown Camera</h3>
+                                        <p id="cctv-camera-location"><span id="cctv-city">Unknown</span>, <span id="cctv-country">Unknown</span></p>
+                                        <p id="cctv-camera-source">SOURCE: Unknown</p>
+                                    </div>
+                                    <div class="cctv-viewer-controls">
+                                        <button id="cctv-refresh-btn" class="cctv-btn" title="Refresh Feed"><i class="fas fa-sync"></i></button>
+                                        <button id="cctv-locate-btn" class="cctv-btn" title="Locate on Map"><i class="fas fa-location-dot"></i></button>
+                                        <button id="cctv-fullscreen-btn" class="cctv-btn" title="Fullscreen"><i class="fas fa-expand"></i></button>
+                                        <button id="cctv-close-btn" class="cctv-btn" title="Close"><i class="fas fa-times"></i></button>
+                                    </div>
+                                </div>
+                                <div id="cctv-stream-container" class="cctv-stream-container">
+                                    <div class="cctv-grid-overlay"></div>
+                                    <div id="cctv-loading" class="cctv-loading">
+                                        <i class="fas fa-spinner fa-spin"></i> Connecting...
+                                    </div>
+                                    <img id="cctv-image" src="" alt="CCTV Feed" style="display:none;">
+                                    <video id="cctv-video" style="display:none;"></video>
+                                </div>
                             </div>
                         </div>
                     </div>

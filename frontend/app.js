@@ -23,6 +23,40 @@ class EpicArcherDashboard {
         this.liveShipsEnabled = false;
         this.realtimeRefreshTimer = null;
 
+        // CCTV Camera properties (NEW)
+        this.cctvEnabled = false;
+        this.cctvCameras = [];
+        this.cctvLayer = null;
+        this.currentCCTVCamera = null;
+        this.cctvRefreshTimer = null;
+        this.cctvTimeTimer = null;
+        this.darkShipsEnabled = false;
+
+        // Request deduplication & loading states (OPTIMIZATION)
+        this.cctvLoadingInProgress = false;
+        this.realtimeLoadingInProgress = false;
+        this.zoomChangeTimeout = null;
+
+        // CCTV caching (OPTIMIZATION: 5-minute TTL)
+        this.cctvCache = null;
+        this.cctvCacheTimestamp = 0;
+        this.cctvCacheTTL = 5 * 60 * 1000;  // 5 minutes
+
+        // Zoom-level tracking for lazy loading
+        this.currentZoom = 14;
+        this.zoomLevelThresholds = {
+            cctv: 10,        // Load CCTV at zoom 10+
+            ships: 8,        // Load ships at zoom 8+
+            aircraft: 9,     // Load aircraft at zoom 9+
+            darkShips: 8     // Load dark ships at zoom 8+
+        };
+        this.layersLoaded = {
+            cctv: false,
+            ships: false,
+            aircraft: false,
+            darkShips: false
+        };
+
         this.init();
     }
 
@@ -53,6 +87,15 @@ class EpicArcherDashboard {
         this.realtimeLayers.ships.addTo(this.map);
 
         L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+
+        // Track zoom level for lazy loading
+        this.currentZoom = this.map.getZoom();
+        this.map.on('zoomend', () => {
+            this.currentZoom = this.map.getZoom();
+            // OPTIMIZATION: Debounce zoom changes to prevent duplicate API calls
+            if (this.zoomChangeTimeout) clearTimeout(this.zoomChangeTimeout);
+            this.zoomChangeTimeout = setTimeout(() => this.handleZoomChange(), 300);
+        });
 
         // Initialize drawing layer
         this.drawnItems = new L.FeatureGroup();
@@ -174,12 +217,112 @@ class EpicArcherDashboard {
 
         document.getElementById('refresh-realtime')?.addEventListener('click', () => this.refreshRealtime());
 
+        // CCTV Camera Layer Toggle (NEW)
+        document.getElementById('toggle-cctv-cameras')?.addEventListener('change', (e) => {
+            // OPTIMIZATION: Prevent rapid toggle clicks during load
+            if (this.cctvLoadingInProgress) {
+                e.target.checked = !e.target.checked;  // Revert toggle
+                this.setCCTVStatus('Please wait, cameras loading...');
+                return;
+            }
+
+            this.cctvEnabled = e.target.checked;
+            this.layersLoaded.cctv = false;  // Reset loaded flag
+            if (this.cctvEnabled) {
+                // Trigger zoom check (which will load if zoom level is sufficient)
+                this.handleZoomChange();
+                const minZoom = this.zoomLevelThresholds.cctv;
+                if (this.currentZoom < minZoom) {
+                    this.setCCTVStatus(`Zoom to level ${minZoom}+ to load cameras`);
+                }
+            } else {
+                this.clearCCTVLayer();
+                this.setCCTVStatus('Surveillance cameras disabled.');
+            }
+        });
+
+        // CCTV Camera Viewer Controls (NEW)
+        document.getElementById('cctv-close-btn')?.addEventListener('click', () => {
+            document.getElementById('cctv-viewer-modal').classList.add('hidden');
+        });
+
+        document.getElementById('cctv-refresh-btn')?.addEventListener('click', () => {
+            this.refreshCCTVStream();
+        });
+
+        document.getElementById('cctv-locate-btn')?.addEventListener('click', () => {
+            if (this.currentCCTVCamera) {
+                const lat = this.currentCCTVCamera.lat;
+                const lng = this.currentCCTVCamera.lng;
+                this.map.setView([lat, lng], 15);
+            }
+        });
+
+        document.getElementById('cctv-fullscreen-btn')?.addEventListener('click', () => {
+            const modal = document.getElementById('cctv-viewer-modal');
+            const container = document.querySelector('.cctv-viewer-container');
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                container.requestFullscreen?.();
+            }
+        });
+
         // Dark Ships Logs
         document.getElementById('refresh-logs')?.addEventListener('click', () => this.loadDarkShipsLogs());
         document.getElementById('view-status')?.addEventListener('click', () => this.showTrackingStatus());
         document.querySelector('#tracking-status-modal .modal-close')?.addEventListener('click', () => {
             document.getElementById('tracking-status-modal').classList.add('hidden');
         });
+    }
+
+    // Zoom-Level Based Lazy Loading Handler (NEW)
+    handleZoomChange() {
+        console.log(`Zoom level: ${this.currentZoom}`);
+        
+        // CCTV Cameras - Load at zoom 10+
+        if (this.currentZoom >= this.zoomLevelThresholds.cctv && this.cctvEnabled && !this.layersLoaded.cctv) {
+            console.log('Loading CCTV cameras...');
+            this.loadCCTVCameras();
+            this.layersLoaded.cctv = true;
+        } else if (this.currentZoom < this.zoomLevelThresholds.cctv && this.layersLoaded.cctv) {
+            console.log('Unloading CCTV cameras (zoomed out)');
+            this.clearCCTVLayer();
+            this.layersLoaded.cctv = false;
+        }
+        
+        // Ships - Load at zoom 8+
+        if (this.currentZoom >= this.zoomLevelThresholds.ships && this.liveShipsEnabled && !this.layersLoaded.ships) {
+            console.log('Loading ships...');
+            this.refreshRealtime();
+            this.layersLoaded.ships = true;
+        } else if (this.currentZoom < this.zoomLevelThresholds.ships && this.layersLoaded.ships) {
+            console.log('Unloading ships (zoomed out)');
+            this.realtimeLayers.ships.clearLayers();
+            this.layersLoaded.ships = false;
+        }
+        
+        // Aircraft - Load at zoom 9+
+        if (this.currentZoom >= this.zoomLevelThresholds.aircraft && this.liveAircraftEnabled && !this.layersLoaded.aircraft) {
+            console.log('Loading aircraft...');
+            this.refreshRealtime();
+            this.layersLoaded.aircraft = true;
+        } else if (this.currentZoom < this.zoomLevelThresholds.aircraft && this.layersLoaded.aircraft) {
+            console.log('Unloading aircraft (zoomed out)');
+            this.realtimeLayers.aircraft.clearLayers();
+            this.layersLoaded.aircraft = false;
+        }
+        
+        // Dark Ships - Load at zoom 8+
+        if (this.currentZoom >= this.zoomLevelThresholds.darkShips && this.darkShipsEnabled && !this.layersLoaded.darkShips) {
+            console.log('Loading dark ships...');
+            this.loadDarkShipsLogs();
+            this.layersLoaded.darkShips = true;
+        } else if (this.currentZoom < this.zoomLevelThresholds.darkShips && this.layersLoaded.darkShips) {
+            console.log('Unloading dark ships (zoomed out)');
+            // Clear dark ships markers if they exist
+            this.layersLoaded.darkShips = false;
+        }
     }
 
     handleRealtimeToggle() {
@@ -213,6 +356,31 @@ class EpicArcherDashboard {
             return;
         }
 
+        // OPTIMIZATION: Prevent simultaneous realtime requests
+        if (this.realtimeLoadingInProgress) {
+            console.log('Realtime load already in progress, skipping');
+            return;
+        }
+
+        // Check zoom levels for ships and aircraft
+        const canShowShips = this.currentZoom >= this.zoomLevelThresholds.ships;
+        const canShowAircraft = this.currentZoom >= this.zoomLevelThresholds.aircraft;
+        
+        if (!canShowShips && this.liveShipsEnabled) {
+            this.setRealtimeStatus(`Ships: Zoom to level ${this.zoomLevelThresholds.ships}+ to view`);
+            this.realtimeLayers.ships.clearLayers();
+        }
+        
+        if (!canShowAircraft && this.liveAircraftEnabled) {
+            this.setRealtimeStatus(`Aircraft: Zoom to level ${this.zoomLevelThresholds.aircraft}+ to view`);
+            this.realtimeLayers.aircraft.clearLayers();
+        }
+        
+        // Only fetch if zoom level permits
+        if (!canShowShips && !canShowAircraft) {
+            return;
+        }
+
         const bbox = this.currentMapBbox();
         const params = new URLSearchParams({
             min_lat: bbox.minLat,
@@ -221,26 +389,31 @@ class EpicArcherDashboard {
             max_lon: bbox.maxLon
         });
 
+        this.realtimeLoadingInProgress = true;
         this.setRealtimeStatus('Refreshing live transponder data...');
         const tasks = [];
-        if (this.liveAircraftEnabled) {
+        
+        if (this.liveAircraftEnabled && canShowAircraft) {
             tasks.push(this.fetchRealtimeFeed(`/api/realtime/aircraft?${params.toString()}`, 'aircraft'));
         }
-        if (this.liveShipsEnabled) {
+        if (this.liveShipsEnabled && canShowShips) {
             const shipParams = new URLSearchParams(params);
             shipParams.set('sample_seconds', '8');
             tasks.push(this.fetchRealtimeFeed(`/api/realtime/ships?${shipParams.toString()}`, 'ships'));
         }
 
-        const results = await Promise.allSettled(tasks);
-        const ok = results
-            .filter(r => r.status === 'fulfilled')
-            .map(r => r.value)
-            .filter(Boolean);
-        const failed = results.length - ok.length;
-        const total = ok.reduce((sum, item) => sum + item.count, 0);
-        const suffix = failed ? ` (${failed} source unavailable)` : '';
-        this.setRealtimeStatus(`Mapped ${total} live contacts${suffix}.`);
+        try {
+                const ok = results
+                .filter(r => r.status === 'fulfilled')
+                .map(r => r.value)
+                .filter(Boolean);
+            const failed = results.length - ok.length;
+            const total = ok.reduce((sum, item) => sum + item.count, 0);
+            const suffix = failed ? ` (${failed} source unavailable)` : '';
+            this.setRealtimeStatus(`Mapped ${total} live contacts${suffix}.`);
+        } finally {
+            this.realtimeLoadingInProgress = false;
+        }
     }
 
     async fetchRealtimeFeed(url, layerName) {
@@ -1046,6 +1219,224 @@ class EpicArcherDashboard {
         }
     }
 
+    // =========================================================================
+    // CCTV CAMERA METHODS (NEW)
+    // =========================================================================
+
+    async loadCCTVCameras() {
+        try {
+            // Check zoom level
+            if (this.currentZoom < this.zoomLevelThresholds.cctv) {
+                this.setCCTVStatus(`Zoom to level ${this.zoomLevelThresholds.cctv}+ to load cameras`);
+                return;
+            }
+            
+            // OPTIMIZATION: Prevent duplicate simultaneous requests
+            if (this.cctvLoadingInProgress) {
+                console.log('CCTV load already in progress, skipping');
+                return;
+            }
+            
+            // OPTIMIZATION: Check cache (5-minute TTL)
+            const now = Date.now();
+            if (this.cctvCache && (now - this.cctvCacheTimestamp) < this.cctvCacheTTL) {
+                console.log('Using cached CCTV data');
+                this.cctvCameras = this.cctvCache;
+                this.renderCCTVLayer();
+                this.setCCTVStatus(`${this.cctvCache.length} surveillance cameras (cached)`);
+                return;
+            }
+            
+            this.cctvLoadingInProgress = true;
+            this.setCCTVStatus('Loading surveillance cameras...');
+            
+            const resp = await fetch('/api/cctv?region=all');
+            const data = await resp.json();
+            
+            if (!data.cameras || data.cameras.length === 0) {
+                this.setCCTVStatus('No surveillance cameras available');
+                this.cctvLoadingInProgress = false;
+                return;
+            }
+            
+            // OPTIMIZATION: Store in cache with timestamp
+            this.cctvCache = data.cameras;
+            this.cctvCacheTimestamp = now;
+            this.cctvCameras = data.cameras;
+            
+            // Create or update CCTV layer
+            this.renderCCTVLayer();
+            
+            this.setCCTVStatus(`${data.total} surveillance cameras active`);
+            this.notify(`Loaded ${data.total} CCTV cameras`, 'success');
+            this.cctvLoadingInProgress = false;
+        } catch (e) {
+            console.error('Failed to load CCTV cameras:', e);
+            this.setCCTVStatus('Failed to load cameras');
+            this.notify('Failed to load CCTV cameras: ' + e.message, 'error');
+            this.cctvLoadingInProgress = false;
+        }
+    }
+
+    renderCCTVLayer() {
+        // Remove existing CCTV layer if present
+        if (this.cctvLayer) {
+            this.map.removeLayer(this.cctvLayer);
+        }
+        
+        // Create feature group for CCTV markers
+        this.cctvLayer = L.layerGroup();
+        
+        if (!this.cctvCameras) return;
+        
+        this.cctvCameras.forEach(camera => {
+            // Create marker with tactical styling
+            const marker = L.circleMarker([camera.lat, camera.lng], {
+                radius: 8,
+                fillColor: '#00E676',  // Bright green tactical color
+                color: '#000000',
+                weight: 2.5,
+                opacity: 0.9,
+                fillOpacity: 0.9,
+                className: 'cctv-marker'
+            });
+            
+            // Popup with camera info
+            const popupContent = `
+                <div class="cctv-popup">
+                    <strong>${camera.name}</strong><br>
+                    <small>${camera.city}, ${camera.country}</small><br>
+                    <small>Type: ${camera.camera_type}</small><br>
+                    <small>Source: ${camera.source}</small><br>
+                    <button onclick="app.openCCTVViewer({
+                        id: '${camera.id}',
+                        name: '${camera.name}',
+                        lat: ${camera.lat},
+                        lng: ${camera.lng},
+                        city: '${camera.city}',
+                        country: '${camera.country}',
+                        feed_url: '${camera.feed_url || ''}',
+                        stream_url: '${camera.stream_url || ''}',
+                        stream_type: '${camera.stream_type}',
+                        source: '${camera.source}'
+                    })" style="margin-top:5px; padding:5px; background:#00E676; color:#000; border:none; border-radius:3px; cursor:pointer;">View Stream</button>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            marker.on('click', () => {
+                this.openCCTVViewer(camera);
+            });
+            
+            this.cctvLayer.addLayer(marker);
+        });
+        
+        this.cctvLayer.addTo(this.map);
+    }
+
+    openCCTVViewer(camera) {
+        this.currentCCTVCamera = camera;
+        
+        // Update modal header
+        document.getElementById('cctv-camera-id').textContent = `CAM-${camera.id.substring(0, 8).toUpperCase()}`;
+        document.getElementById('cctv-camera-coords').textContent = `${camera.lat.toFixed(4)}, ${camera.lng.toFixed(4)}`;
+        document.getElementById('cctv-camera-name').textContent = camera.name;
+        document.getElementById('cctv-city').textContent = camera.city;
+        document.getElementById('cctv-country').textContent = camera.country;
+        document.getElementById('cctv-camera-source').textContent = `SOURCE: ${camera.source} (${camera.camera_type.toUpperCase()})`;
+        
+        // Display stream based on type
+        const container = document.getElementById('cctv-stream-container');
+        const loading = document.getElementById('cctv-loading');
+        const image = document.getElementById('cctv-image');
+        const video = document.getElementById('cctv-video');
+        
+        // Hide all streams first
+        image.style.display = 'none';
+        video.style.display = 'none';
+        loading.style.display = 'flex';
+        
+        if (camera.stream_type === 'jpg' && camera.feed_url) {
+            // Show JPG snapshot with auto-refresh
+            image.src = camera.feed_url + '?t=' + Date.now();
+            image.style.display = 'block';
+            loading.style.display = 'none';
+            
+            // OPTIMIZATION: Adaptive refresh rate (10s instead of 5s to reduce API load)
+            // Only refresh if modal is visible and image is displayed
+            if (this.cctvRefreshTimer) clearInterval(this.cctvRefreshTimer);
+            this.cctvRefreshTimer = setInterval(() => {
+                const modal = document.getElementById('cctv-viewer-modal');
+                const image = document.getElementById('cctv-image');
+                // Only refresh if modal is visible and image element is visible
+                if (modal && !modal.classList.contains('hidden') && image && image.style.display !== 'none') {
+                    image.src = camera.feed_url + '?t=' + Date.now();
+                }
+            }, 10000);  // 10 seconds instead of 5 (2x reduction in API calls)
+        } else if (camera.stream_type === 'hls' && camera.stream_url) {
+            // Show HLS stream (would need Hls.js library)
+            video.src = camera.stream_url;
+            video.style.display = 'block';
+            video.play().catch(e => console.log('Video playback failed:', e));
+            loading.style.display = 'none';
+        } else if (camera.external_url) {
+            // Show external link
+            loading.innerHTML = `
+                <div class="cctv-external-notice">
+                    Stream is encrypted or hosted externally.<br>
+                    <a href="${camera.external_url}" target="_blank" style="color:#00E676; text-decoration:underline;">Open External Link</a>
+                </div>
+            `;
+        } else {
+            loading.innerHTML = `
+                <div class="cctv-no-stream">
+                    No stream available for this camera
+                </div>
+            `;
+        }
+        
+        // Update UTC time
+        this.updateCCTVTime();
+        if (this.cctvTimeTimer) clearInterval(this.cctvTimeTimer);
+        this.cctvTimeTimer = setInterval(() => this.updateCCTVTime(), 1000);
+        
+        // Show modal
+        document.getElementById('cctv-viewer-modal').classList.remove('hidden');
+    }
+
+    updateCCTVTime() {
+        const now = new Date();
+        const utcTime = now.toUTCString().split(' ')[4];
+        document.getElementById('cctv-utc-time').textContent = utcTime + 'Z';
+    }
+
+    refreshCCTVStream() {
+        if (!this.currentCCTVCamera) return;
+        
+        const image = document.getElementById('cctv-image');
+        if (image.style.display !== 'none') {
+            image.src = this.currentCCTVCamera.feed_url + '?t=' + Date.now();
+            this.notify('Feed refreshed', 'info');
+        }
+    }
+
+    clearCCTVLayer() {
+        if (this.cctvLayer) {
+            this.map.removeLayer(this.cctvLayer);
+            this.cctvLayer = null;
+        }
+        
+        if (this.cctvRefreshTimer) clearInterval(this.cctvRefreshTimer);
+        if (this.cctvTimeTimer) clearInterval(this.cctvTimeTimer);
+    }
+
+    setCCTVStatus(msg) {
+        const statusEl = document.getElementById('cctv-status');
+        if (statusEl) {
+            statusEl.textContent = msg;
+        }
+    }
+
     notify(msg, type = 'info') {
         console.log(`[${type.toUpperCase()}] ${msg}`);
         // Simple UI notification
@@ -1101,5 +1492,5 @@ class EpicArcherDashboard {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new EpicArcherDashboard();
+    window.app = new EpicArcherDashboard();
 });

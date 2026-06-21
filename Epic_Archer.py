@@ -2588,6 +2588,34 @@ async def get_dark_ships_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# CCTV Aggregation Endpoints (NEW)
+
+@app.get("/api/cctv")
+async def get_cctv(region: str = "all"):
+    """
+    Get CCTV cameras from all available sources
+    Includes: maritime ports, coastal surveillance, harbor monitoring
+    
+    Query Parameters:
+    - region: Filter by region (all, caribbean, panama, etc.)
+    
+    Returns:
+        List of cameras with metadata and stream URLs
+    """
+    try:
+        from cctv_aggregator import get_cctv_cameras
+        
+        result = await get_cctv_cameras(region=region)
+        return result
+        
+    except ImportError:
+        logger.error("CCTV aggregator module not found")
+        raise HTTPException(status_code=500, detail="CCTV system not available")
+    except Exception as e:
+        logger.error(f"Failed to get CCTV cameras: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/roads")
 async def get_roads(min_lat: float, min_lon: float, max_lat: float, max_lon: float):
     roads = engine.fetch_roads([min_lat, min_lon, max_lat, max_lon])
